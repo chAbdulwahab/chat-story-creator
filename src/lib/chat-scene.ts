@@ -53,7 +53,7 @@ function roundRect(
   h: number,
   r: number | [number, number, number, number],
 ) {
-  const rad = typeof r === "number" ? [r, r, r, r] : r;
+  const rad: [number, number, number, number] = typeof r === "number" ? [r, r, r, r] : r;
   ctx.beginPath();
   ctx.moveTo(x + rad[0], y);
   ctx.lineTo(x + w - rad[1], y);
@@ -265,7 +265,7 @@ function drawComposer(ctx: CanvasRenderingContext2D, c: ReturnType<typeof palett
   // pill
   const px = 150;
   const pw = BASE_W - 150 - 40;
-  ctx.fillStyle = c.theme === undefined ? c.them : c.them;
+  ctx.fillStyle = c.them;
   roundRect(ctx, px, kbTop + 22, pw, 86, 43);
   ctx.fill();
   ctx.fillStyle = c.muted;
@@ -275,7 +275,7 @@ function drawComposer(ctx: CanvasRenderingContext2D, c: ReturnType<typeof palett
   ctx.fillText("Message...", px + 40, kbTop + 66);
 
   // right icons inside pill: mic, gallery, sticker, plus
-  const icons = [BASE_W - 260, BASE_W - 190, BASE_W - 120];
+  const icons: [number, number, number] = [BASE_W - 260, BASE_W - 190, BASE_W - 120];
   ctx.strokeStyle = c.muted;
   ctx.fillStyle = c.muted;
   ctx.lineWidth = 5;
@@ -350,7 +350,8 @@ function drawKeyboard(ctx: CanvasRenderingContext2D, c: ReturnType<typeof palett
     [BASE_W - gap - 250, 110, "."],
     [BASE_W - gap - 130, 130, "↵"],
   ];
-  parts.forEach(([x, w, label]) => {
+  parts.forEach((part) => {
+    const [x, w, label] = part as [number, number, string];
     ctx.fillStyle = label === "↵" ? "#3797F0" : c.key;
     roundRect(ctx, x, by, w, keyH, 12);
     ctx.fill();
@@ -410,8 +411,8 @@ export function drawChatScene(ctx: CanvasRenderingContext2D, opts: SceneOpts) {
   const entry = last ? easeOut((time - last.m.time) / 0.38) : 1;
   const shift = last ? (1 - entry) * (last.h + gapY) : 0;
 
-  let y = areaBottom - total + shift;
-  if (y > areaTop) y = areaTop === 0 ? y : Math.min(y, areaBottom - total + shift);
+  const y0 = areaBottom - total + shift;
+  let y = y0;
 
   ctx.save();
   ctx.beginPath();
