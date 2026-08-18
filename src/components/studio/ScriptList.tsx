@@ -10,12 +10,12 @@ export function ScriptList() {
 
   return (
     <div className="panel flex h-full flex-col p-4">
-      <h2 className="mb-3 text-sm font-semibold tracking-wide text-muted-foreground uppercase">
+      <h2 className="mb-3 text-xs font-bold tracking-wider text-emerald-400 uppercase">
         Story script
       </h2>
       <div className="flex-1 space-y-2 overflow-y-auto pr-1">
         {messages.length === 0 && (
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-slate-300">
             No dialogue yet — add your first line from the timeline.
           </p>
         )}
@@ -28,14 +28,14 @@ export function ScriptList() {
               openComposer(m.time, m.id);
             }}
           >
-            <span className="font-mono text-xs text-emerald-400">{formatTime(m.time)}</span>
+            <span className="font-mono text-xs font-bold text-emerald-400">{formatTime(m.time)}</span>
             <span className={`speaker-dot ${m.side}`} />
-            <span className="flex-1 truncate text-left text-sm">{m.text}</span>
-            {m.key && <Star size={14} className="shrink-0 text-amber-400" />}
+            <span className="flex-1 truncate text-left text-sm font-medium text-slate-100">{m.text}</span>
+            {m.key && <Star size={14} className="shrink-0 text-amber-400 fill-amber-400" />}
           </button>
         ))}
       </div>
-      <p className="mt-3 text-xs text-muted-foreground">
+      <p className="mt-3 text-xs font-medium text-slate-300">
         Blue = Me · Gradient = {settings.username || "Them"}
       </p>
     </div>

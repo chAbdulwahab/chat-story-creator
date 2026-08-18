@@ -107,18 +107,18 @@ export function AudioTimeline() {
 
   return (
     <div className="panel p-4">
-      <div className="mb-3 flex flex-wrap items-center gap-3">
+      <div className="mb-3 flex flex-wrap items-center gap-2 sm:gap-3">
         <button
-          className="btn-accent"
+          className="btn-accent text-xs sm:text-sm px-3 py-1.5"
           onClick={() => setPlaying(!playing)}
           aria-label={playing ? "Pause" : "Play"}
         >
-          {playing ? <Pause size={16} /> : <Play size={16} />}
+          {playing ? <Pause size={15} /> : <Play size={15} />}
           {playing ? "Pause" : "Play"}
         </button>
-        <label className="btn-ghost cursor-pointer">
-          <Upload size={16} />
-          {loading ? "Decoding..." : audio ? audio.name.slice(0, 22) : "Upload audio"}
+        <label className="btn-ghost cursor-pointer text-xs sm:text-sm px-3 py-1.5 max-w-[130px] sm:max-w-none truncate">
+          <Upload size={15} className="shrink-0" />
+          <span className="truncate">{loading ? "Decoding..." : audio ? audio.name : "Upload audio"}</span>
           <input
             type="file"
             accept="audio/*"
@@ -129,11 +129,11 @@ export function AudioTimeline() {
             }}
           />
         </label>
-        <button className="btn-ghost" onClick={() => openComposer(currentTime)}>
-          <Plus size={16} /> Add message at playhead
+        <button className="btn-ghost text-xs sm:text-sm px-3 py-1.5" onClick={() => openComposer(currentTime)}>
+          <Plus size={15} /> <span className="hidden xs:inline">Add message at playhead</span><span className="xs:hidden">Add msg</span>
         </button>
-        <span className="ml-auto font-mono text-sm text-emerald-400">
-          {formatTime(currentTime)} <span className="text-muted-foreground">/ {formatTime(duration)}</span>
+        <span className="ml-auto font-mono text-xs sm:text-sm font-bold text-emerald-400">
+          {formatTime(currentTime)} <span className="text-slate-300 font-normal">/ {formatTime(duration)}</span>
         </span>
       </div>
 
@@ -147,7 +147,6 @@ export function AudioTimeline() {
           setCurrentTime(t);
           if (audioRef.current) audioRef.current.currentTime = t;
         }}
-        onDoubleClick={(e) => openComposer(seekFromEvent(e))}
       >
         <canvas ref={canvasRef} className="block" />
         {hover !== null && (
@@ -186,8 +185,8 @@ export function AudioTimeline() {
           className="hidden"
         />
       )}
-      <p className="mt-2 text-xs text-muted-foreground">
-        Click to scrub · Double-click to drop a message at that timestamp · Click a marker to edit
+      <p className="mt-2 text-xs font-medium text-slate-300">
+        Click to scrub playhead · Click "+ Add message at playhead" to add dialogue · Click a marker to edit
       </p>
     </div>
   );

@@ -40,9 +40,9 @@ export function MessageComposer() {
     <div className="sheet-backdrop" onClick={close}>
       <div className="sheet" onClick={(e) => e.stopPropagation()}>
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">
+          <h2 className="text-lg font-bold text-white">
             {editing ? "Edit dialogue" : "New dialogue"}{" "}
-            <span className="ml-2 font-mono text-sm text-emerald-400">{formatTime(time)}</span>
+            <span className="ml-2 font-mono text-sm font-bold text-emerald-400">{formatTime(time)}</span>
           </h2>
           <button className="icon-btn" onClick={close} aria-label="Close">
             <X size={18} />
@@ -62,7 +62,7 @@ export function MessageComposer() {
         </div>
 
         <textarea
-          className="field min-h-28 resize-none"
+          className="field min-h-28 resize-none text-slate-100 placeholder:text-slate-400"
           placeholder="Type the dialogue line..."
           value={text}
           autoFocus
@@ -79,7 +79,7 @@ export function MessageComposer() {
           <button className={`btn-ghost ${key ? "is-key" : ""}`} onClick={() => setKey(!key)}>
             <Star size={16} /> {key ? "Key line" : "Normal"}
           </button>
-          <label className="ml-auto flex items-center gap-2 text-sm text-muted-foreground">
+          <label className="ml-auto flex items-center gap-2 text-sm font-semibold text-slate-200">
             Time
             <input
               type="number"
@@ -87,7 +87,7 @@ export function MessageComposer() {
               min="0"
               value={time.toFixed(1)}
               onChange={(e) => setTime(Number(e.target.value))}
-              className="field w-24 py-1 text-right font-mono"
+              className="field w-24 py-1.5 text-right font-mono text-emerald-400 font-bold"
             />
             s
           </label>

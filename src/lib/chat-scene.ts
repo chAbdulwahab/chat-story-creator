@@ -4,6 +4,14 @@ export type SceneImages = {
   me?: HTMLImageElement | null;
   them?: HTMLImageElement | null;
   wallpaper?: HTMLImageElement | null;
+  cameraDark?: HTMLImageElement | null;
+  cameraLight?: HTMLImageElement | null;
+  micDark?: HTMLImageElement | null;
+  micLight?: HTMLImageElement | null;
+  galleryDark?: HTMLImageElement | null;
+  galleryLight?: HTMLImageElement | null;
+  phoneDark?: HTMLImageElement | null;
+  phoneLight?: HTMLImageElement | null;
 };
 
 export type SceneOpts = {
@@ -23,14 +31,14 @@ const palette = (theme: Settings["theme"]) =>
     ? {
         bg: "#ffffff",
         fg: "#000000",
-        muted: "#8e8e8e",
-        them: "#efefef",
+        muted: "#737373",
+        them: "#f2f2f2",
         themFg: "#000000",
         chrome: "#ffffff",
-        line: "#dbdbdb",
-        keyboard: "#d1d5db",
+        line: "#e5e5e5",
+        keyboard: "#eceff1",
         key: "#ffffff",
-        keyFg: "#111111",
+        keyFg: "#000000",
       }
     : {
         bg: "#000000",
@@ -220,11 +228,48 @@ function drawHeader(
   ctx.fillText(s.statusText || "", nameX, top + 108);
 
   // call + video icons
+  const phoneImg = c.bg === "#000000" ? images?.phoneDark : images?.phoneLight;
+  const px = BASE_W - 190;
+  const py = top + 75;
+
+  if (phoneImg?.complete && phoneImg.naturalWidth) {
+    ctx.drawImage(phoneImg, px - 22, py - 22, 44, 44);
+  } else {
+    // Exact phone call receiver matching uploaded assets
+    ctx.save();
+    ctx.translate(px, py);
+    const isDark = c.bg === "#000000";
+
+    ctx.beginPath();
+    ctx.moveTo(-16, -10);
+    ctx.bezierCurveTo(-16, -16, -10, -20, -4, -16);
+    ctx.lineTo(1, -11);
+    ctx.bezierCurveTo(4, -7, 4, -1, 0, 3);
+    ctx.lineTo(-4, 7);
+    ctx.bezierCurveTo(-2, 11, 2, 15, 6, 17);
+    ctx.lineTo(10, 13);
+    ctx.bezierCurveTo(14, 9, 20, 9, 24, 13);
+    ctx.lineTo(29, 18);
+    ctx.bezierCurveTo(33, 24, 29, 30, 23, 30);
+    ctx.bezierCurveTo(9, 30, -16, 5, -16, -10);
+    ctx.closePath();
+
+    if (isDark) {
+      ctx.fillStyle = c.fg;
+      ctx.fill();
+    } else {
+      ctx.strokeStyle = c.fg;
+      ctx.lineWidth = 4.5;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // Video camera icon
   ctx.strokeStyle = c.fg;
-  ctx.lineWidth = 6;
-  ctx.beginPath();
-  ctx.arc(BASE_W - 190, top + 75, 22, 0.6, 4.2);
-  ctx.stroke();
+  ctx.lineWidth = 5;
   roundRect(ctx, BASE_W - 130, top + 55, 60, 42, 12);
   ctx.stroke();
   ctx.beginPath();
@@ -243,24 +288,44 @@ function drawHeader(
   ctx.stroke();
 }
 
-function drawComposer(ctx: CanvasRenderingContext2D, c: ReturnType<typeof palette>) {
+function drawComposer(ctx: CanvasRenderingContext2D, c: ReturnType<typeof palette>, images?: SceneImages) {
   const kbTop = BASE_H - 620;
   const barH = 130;
   ctx.fillStyle = c.chrome;
   ctx.fillRect(0, kbTop, BASE_W, barH);
 
-  // blue camera circle
-  ctx.beginPath();
-  ctx.arc(90, kbTop + 65, 40, 0, Math.PI * 2);
-  ctx.fillStyle = "#3797F0";
-  ctx.fill();
-  ctx.fillStyle = "#fff";
-  roundRect(ctx, 68, kbTop + 52, 44, 30, 8);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.arc(90, kbTop + 67, 9, 0, Math.PI * 2);
-  ctx.fillStyle = "#3797F0";
-  ctx.fill();
+  // Camera icon (Image or vector matching uploaded assets)
+  const camImg = c.bg === "#000000" ? images?.cameraDark : images?.cameraLight;
+  if (camImg?.complete && camImg.naturalWidth) {
+    ctx.drawImage(camImg, 50, kbTop + 25, 80, 80);
+  } else {
+    // Exact Instagram camera icon matching uploaded assets
+    ctx.beginPath();
+    ctx.arc(90, kbTop + 65, 40, 0, Math.PI * 2);
+    ctx.fillStyle = "#3797F0";
+    ctx.fill();
+
+    // Camera viewfinder top notch
+    roundRect(ctx, 78, kbTop + 43, 24, 8, 3);
+    ctx.fillStyle = "#ffffff";
+    ctx.fill();
+
+    // Camera body
+    roundRect(ctx, 66, kbTop + 48, 48, 34, 10);
+    ctx.fill();
+
+    // Outer lens ring
+    ctx.beginPath();
+    ctx.arc(90, kbTop + 65, 11, 0, Math.PI * 2);
+    ctx.fillStyle = "#3797F0";
+    ctx.fill();
+
+    // Center lens dot
+    ctx.beginPath();
+    ctx.arc(90, kbTop + 65, 5, 0, Math.PI * 2);
+    ctx.fillStyle = "#ffffff";
+    ctx.fill();
+  }
 
   // pill
   const px = 150;
@@ -269,30 +334,86 @@ function drawComposer(ctx: CanvasRenderingContext2D, c: ReturnType<typeof palett
   roundRect(ctx, px, kbTop + 22, pw, 86, 43);
   ctx.fill();
   ctx.fillStyle = c.muted;
-  ctx.font = "400 34px system-ui, sans-serif";
+  ctx.font = "400 32px system-ui, sans-serif";
   ctx.textAlign = "left";
   ctx.textBaseline = "middle";
-  ctx.fillText("Message...", px + 40, kbTop + 66);
+  ctx.fillText("@unsunikahaniyn", px + 36, kbTop + 66);
 
-  // right icons inside pill: mic, gallery, sticker, plus
+  // right icons inside pill: mic, gallery, sticker
   const icons: [number, number, number] = [BASE_W - 260, BASE_W - 190, BASE_W - 120];
   ctx.strokeStyle = c.muted;
   ctx.fillStyle = c.muted;
-  ctx.lineWidth = 5;
-  // mic
-  roundRect(ctx, icons[0] - 11, kbTop + 46, 22, 30, 11);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.arc(icons[0], kbTop + 74, 18, 0.15 * Math.PI, 0.85 * Math.PI);
-  ctx.stroke();
-  // gallery
-  roundRect(ctx, icons[1] - 22, kbTop + 44, 44, 44, 10);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(icons[1] - 16, kbTop + 80);
-  ctx.lineTo(icons[1] - 2, kbTop + 62);
-  ctx.lineTo(icons[1] + 16, kbTop + 82);
-  ctx.stroke();
+  ctx.lineWidth = 4;
+
+  // mic icon (matching uploaded solid & outline assets)
+  const micImg = c.bg === "#000000" ? images?.micDark : images?.micLight;
+  if (micImg?.complete && micImg.naturalWidth) {
+    ctx.drawImage(micImg, icons[0] - 20, kbTop + 45, 40, 42);
+  } else {
+    const micX = icons[0];
+    const isDark = c.bg === "#000000";
+
+    // Mic capsule
+    roundRect(ctx, micX - 9, kbTop + 42, 18, 28, 9);
+    if (isDark) {
+      ctx.fillStyle = c.muted;
+      ctx.fill();
+    } else {
+      ctx.strokeStyle = c.muted;
+      ctx.lineWidth = 3.5;
+      ctx.stroke();
+    }
+
+    // U-cradle stand
+    ctx.beginPath();
+    ctx.arc(micX, kbTop + 54, 15, 0.05 * Math.PI, 0.95 * Math.PI);
+    ctx.strokeStyle = c.muted;
+    ctx.lineWidth = 3.5;
+    ctx.stroke();
+
+    // Stem
+    ctx.beginPath();
+    ctx.moveTo(micX, kbTop + 69);
+    ctx.lineTo(micX, kbTop + 78);
+    ctx.stroke();
+
+    // Base bar
+    ctx.beginPath();
+    ctx.moveTo(micX - 9, kbTop + 78);
+    ctx.lineTo(micX + 9, kbTop + 78);
+    ctx.stroke();
+  }
+  // gallery icon (matching uploaded asset with frame, sun dot and mountain peaks)
+  const galImg = c.bg === "#000000" ? images?.galleryDark : images?.galleryLight;
+  if (galImg?.complete && galImg.naturalWidth) {
+    ctx.drawImage(galImg, icons[1] - 21, kbTop + 45, 42, 42);
+  } else {
+    const gx = icons[1];
+    // Frame
+    roundRect(ctx, gx - 21, kbTop + 45, 42, 42, 11);
+    ctx.strokeStyle = c.muted;
+    ctx.lineWidth = 3.5;
+    ctx.stroke();
+
+    // Sun dot in top left
+    ctx.beginPath();
+    ctx.arc(gx - 9, kbTop + 57, 4, 0, Math.PI * 2);
+    ctx.fillStyle = c.muted;
+    ctx.fill();
+
+    // Mountain peaks at bottom
+    ctx.beginPath();
+    ctx.moveTo(gx - 14, kbTop + 75);
+    ctx.lineTo(gx - 8, kbTop + 67);
+    ctx.lineTo(gx - 2, kbTop + 73);
+    ctx.lineTo(gx + 7, kbTop + 62);
+    ctx.lineTo(gx + 14, kbTop + 75);
+    ctx.strokeStyle = c.muted;
+    ctx.lineWidth = 3.5;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.stroke();
+  }
   // sticker (smiley)
   ctx.beginPath();
   ctx.arc(icons[2], kbTop + 66, 23, 0, Math.PI * 2);
@@ -312,59 +433,134 @@ function drawKeyboard(ctx: CanvasRenderingContext2D, c: ReturnType<typeof palett
   ctx.fillStyle = c.keyboard;
   ctx.fillRect(0, top, BASE_W, h);
 
-  // suggestion strip
+  // Gboard Top Action Bar / Suggestions
   ctx.fillStyle = c.keyFg;
-  ctx.font = "400 30px system-ui, sans-serif";
+  ctx.font = "400 28px system-ui, sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ["I", "The", "I'm"].forEach((w, i) => {
     ctx.globalAlpha = 0.75;
-    ctx.fillText(w, BASE_W * (0.17 + i * 0.33), top + 46);
+    ctx.fillText(w, BASE_W * (0.18 + i * 0.32), top + 42);
     ctx.globalAlpha = 1;
   });
 
-  const keyH = 96;
-  const gap = 12;
-  const rowTop = top + 92;
-  ROWS.forEach((row, r) => {
-    const count = row.length;
-    const keyW = (BASE_W - gap * (count + 1)) / count;
-    const offset = r === 1 ? keyW / 2 + gap / 2 : r === 2 ? keyW * 1.6 : 0;
-    row.split("").forEach((ch, i) => {
-      const x = gap + offset + i * (keyW + gap);
-      ctx.fillStyle = c.key;
-      roundRect(ctx, x, rowTop + r * (keyH + gap * 1.4), keyW, keyH, 12);
-      ctx.fill();
-      ctx.fillStyle = c.keyFg;
-      ctx.font = "500 40px system-ui, sans-serif";
-      ctx.fillText(ch, x + keyW / 2, rowTop + r * (keyH + gap * 1.4) + keyH / 2);
-    });
-  });
+  const keyH = 92;
+  const padX = 10;
+  const gap = 10;
+  const rowGap = 16;
+  const rowTop = top + 84;
 
-  // bottom row
-  const by = rowTop + 3 * (keyH + gap * 1.4);
-  const parts: Array<[number, number, string]> = [
-    [gap, 150, "?123"],
-    [gap + 162, 96, ","],
-    [gap + 270, BASE_W - 2 * gap - 270 - 260, ""],
-    [BASE_W - gap - 250, 110, "."],
-    [BASE_W - gap - 130, 130, "↵"],
-  ];
-  parts.forEach((part) => {
-    const [x, w, label] = part as [number, number, string];
-    ctx.fillStyle = label === "↵" ? "#3797F0" : c.key;
-    roundRect(ctx, x, by, w, keyH, 12);
+  // Row 1: q w e r t y u i o p (10 keys)
+  const count1 = 10;
+  const keyW = (BASE_W - padX * 2 - gap * (count1 - 1)) / count1; // ~97px
+  const superscripts = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"];
+  "qwertyuiop".split("").forEach((ch, i) => {
+    const x = padX + i * (keyW + gap);
+    const y = rowTop;
+    ctx.fillStyle = c.key;
+    roundRect(ctx, x, y, keyW, keyH, 10);
     ctx.fill();
-    ctx.fillStyle = label === "↵" ? "#ffffff" : c.keyFg;
-    ctx.font = "500 34px system-ui, sans-serif";
-    ctx.fillText(label, x + w / 2, by + keyH / 2);
+
+    // Superscript number
+    ctx.fillStyle = c.keyFg;
+    ctx.globalAlpha = 0.5;
+    ctx.font = "400 18px system-ui, sans-serif";
+    ctx.textAlign = "right";
+    ctx.fillText(superscripts[i], x + keyW - 8, y + 20);
+    ctx.globalAlpha = 1;
+
+    // Letter
+    ctx.textAlign = "center";
+    ctx.font = "500 38px system-ui, sans-serif";
+    ctx.fillText(ch, x + keyW / 2, y + keyH / 2 + 4);
   });
 
-  // home indicator
-  ctx.fillStyle = c.keyFg;
-  ctx.globalAlpha = 0.6;
-  roundRect(ctx, BASE_W / 2 - 130, BASE_H - 26, 260, 9, 5);
+  // Row 2: a s d f g h j k l (9 keys centered)
+  const row2Top = rowTop + keyH + rowGap;
+  const row2Offset = (keyW + gap) / 2;
+  "asdfghjkl".split("").forEach((ch, i) => {
+    const x = padX + row2Offset + i * (keyW + gap);
+    const y = row2Top;
+    ctx.fillStyle = c.key;
+    roundRect(ctx, x, y, keyW, keyH, 10);
+    ctx.fill();
+
+    ctx.fillStyle = c.keyFg;
+    ctx.font = "500 38px system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(ch, x + keyW / 2, y + keyH / 2 + 2);
+  });
+
+  // Row 3: Shift + z x c v b n m + Backspace
+  const row3Top = row2Top + keyH + rowGap;
+  const sideKeyW = keyW * 1.45; // ~140px
+
+  // Shift Key (Left)
+  ctx.fillStyle = c.key;
+  roundRect(ctx, padX, row3Top, sideKeyW, keyH, 10);
   ctx.fill();
+  ctx.fillStyle = c.keyFg;
+  ctx.font = "500 32px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText("⇧", padX + sideKeyW / 2, row3Top + keyH / 2);
+
+  // Letter keys z x c v b n m (7 keys)
+  "zxcvbnm".split("").forEach((ch, i) => {
+    const x = padX + sideKeyW + gap + i * (keyW + gap);
+    const y = row3Top;
+    ctx.fillStyle = c.key;
+    roundRect(ctx, x, y, keyW, keyH, 10);
+    ctx.fill();
+
+    ctx.fillStyle = c.keyFg;
+    ctx.font = "500 38px system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(ch, x + keyW / 2, y + keyH / 2 + 2);
+  });
+
+  // Backspace Key (Right)
+  const bsX = BASE_W - padX - sideKeyW;
+  ctx.fillStyle = c.key;
+  roundRect(ctx, bsX, row3Top, sideKeyW, keyH, 10);
+  ctx.fill();
+  ctx.fillStyle = c.keyFg;
+  ctx.font = "500 30px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText("⌫", bsX + sideKeyW / 2, row3Top + keyH / 2);
+
+  // Row 4: Bottom Action Row
+  const row4Top = row3Top + keyH + rowGap;
+  const k123W = 140;
+  const kCommaW = 90;
+  const kEnterW = 140;
+  const kPeriodW = 90;
+  const spaceW = BASE_W - padX * 2 - gap * 4 - k123W - kCommaW - kPeriodW - kEnterW;
+
+  const row4Keys: Array<{ x: number; w: number; label: string; isEnter?: boolean }> = [
+    { x: padX, w: k123W, label: "?123" },
+    { x: padX + k123W + gap, w: kCommaW, label: "," },
+    { x: padX + k123W + gap + kCommaW + gap, w: spaceW, label: "English" },
+    { x: padX + k123W + gap + kCommaW + gap + spaceW + gap, w: kPeriodW, label: "." },
+    { x: BASE_W - padX - kEnterW, w: kEnterW, label: "↵", isEnter: true },
+  ];
+
+  row4Keys.forEach(({ x, w, label, isEnter }) => {
+    ctx.fillStyle = isEnter ? "#3797F0" : c.key;
+    roundRect(ctx, x, row4Top, w, keyH, isEnter ? 24 : 10);
+    ctx.fill();
+
+    ctx.fillStyle = isEnter ? "#ffffff" : c.keyFg;
+    ctx.font = isEnter ? "700 42px system-ui, sans-serif" : "400 30px system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(label, x + w / 2, row4Top + keyH / 2);
+  });
+
+  // Bottom Android Navigation Bar Chevron
+  ctx.fillStyle = c.keyFg;
+  ctx.globalAlpha = 0.5;
+  ctx.font = "400 24px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText("∨", BASE_W / 2, BASE_H - 24);
   ctx.globalAlpha = 1;
 }
 
@@ -488,7 +684,7 @@ export function drawChatScene(ctx: CanvasRenderingContext2D, opts: SceneOpts) {
 
   drawStatusBar(ctx, c);
   drawHeader(ctx, c, settings, images);
-  drawComposer(ctx, c);
+  drawComposer(ctx, c, images);
   ctx.restore();
 }
 

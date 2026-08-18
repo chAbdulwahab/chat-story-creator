@@ -31,6 +31,14 @@ export type AudioState = {
   peaks: number[];
 } | null;
 
+export type SavedProject = {
+  id: string;
+  name: string;
+  updatedAt: number;
+  messages: ChatMessage[];
+  settings: Settings;
+};
+
 type StudioState = {
   messages: ChatMessage[];
   settings: Settings;
@@ -40,6 +48,9 @@ type StudioState = {
   editingId: string | null;
   composerOpen: boolean;
   settingsOpen: boolean;
+  projectsOpen: boolean;
+  projects: SavedProject[];
+  activeProjectId: string;
   draftTime: number;
 
   setAudio: (a: AudioState) => void;
@@ -51,10 +62,18 @@ type StudioState = {
   openComposer: (time: number, editingId?: string | null) => void;
   closeComposer: () => void;
   setSettingsOpen: (open: boolean) => void;
+  setProjectsOpen: (open: boolean) => void;
   updateSettings: (patch: Partial<Settings>) => void;
+  
+  createNewProject: (name?: string) => void;
+  loadProject: (id: string) => void;
+  deleteProject: (id: string) => void;
+  renameProject: (id: string, newName: string) => void;
+  duplicateProject: (id: string) => void;
 };
 
 const STORAGE_KEY = "fake-chat-studio-v1";
+const PROJECTS_KEY = "fake-chat-projects-v2";
 
 const defaultSettings: Settings = {
   displayName: "sophie.rae",
@@ -68,29 +87,23 @@ const defaultSettings: Settings = {
   wallpaper: null,
 };
 
-function loadPersisted(): { messages: ChatMessage[]; settings: Settings } | null {
-  if (typeof window === "undefined") return null;
+function loadPersistedProjects(): { projects: SavedProject[]; activeId: string } {
+  if (typeof window === "undefined") return { projects: [], activeId: "" };
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
+    const raw = window.localStorage.getItem(PROJECTS_KEY);
+    if (!raw) return { projects: [], activeId: "" };
     const parsed = JSON.parse(raw);
     return {
-      messages: parsed.messages ?? [],
-      settings: { ...defaultSettings, ...(parsed.settings ?? {}) },
+      projects: parsed.projects ?? [],
+      activeId: parsed.activeId ?? "",
     };
   } catch {
-    return null;
+    return { projects: [], activeId: "" };
   }
 }
 
-const seed: ChatMessage[] = [
-  { id: "m1", text: "hey… are you awake?", side: "them", time: 0.6, key: false },
-  { id: "m2", text: "yeah. couldn't sleep", side: "me", time: 2.4, key: false },
-  { id: "m3", text: "i need to tell you something", side: "them", time: 4.2, key: true },
-];
-
 export const useStudio = create<StudioState>((set, get) => ({
-  messages: seed,
+  messages: [],
   settings: defaultSettings,
   audio: null,
   currentTime: 0,
@@ -98,6 +111,9 @@ export const useStudio = create<StudioState>((set, get) => ({
   editingId: null,
   composerOpen: false,
   settingsOpen: false,
+  projectsOpen: false,
+  projects: [],
+  activeProjectId: "default",
   draftTime: 0,
 
   setAudio: (a) => set({ audio: a, currentTime: 0, playing: false }),
@@ -109,7 +125,7 @@ export const useStudio = create<StudioState>((set, get) => ({
       (a, b) => a.time - b.time,
     );
     set({ messages: next });
-    persist();
+    persistCurrent();
   },
   updateMessage: (id, patch) => {
     set({
@@ -117,38 +133,184 @@ export const useStudio = create<StudioState>((set, get) => ({
         .messages.map((m) => (m.id === id ? { ...m, ...patch } : m))
         .sort((a, b) => a.time - b.time),
     });
-    persist();
+    persistCurrent();
   },
   removeMessage: (id) => {
     set({ messages: get().messages.filter((m) => m.id !== id) });
-    persist();
+    persistCurrent();
   },
   openComposer: (time, editingId = null) =>
     set({ composerOpen: true, draftTime: time, editingId }),
   closeComposer: () => set({ composerOpen: false, editingId: null }),
   setSettingsOpen: (open) => set({ settingsOpen: open }),
+  setProjectsOpen: (open) => set({ projectsOpen: open }),
   updateSettings: (patch) => {
     set({ settings: { ...get().settings, ...patch } });
-    persist();
+    persistCurrent();
+  },
+
+  createNewProject: (name) => {
+    const newId = crypto.randomUUID();
+    const projName = name?.trim() || `Story Project #${get().projects.length + 1}`;
+    const newProj: SavedProject = {
+      id: newId,
+      name: projName,
+      updatedAt: Date.now(),
+      messages: [],
+      settings: { ...defaultSettings },
+    };
+    const updatedProjects = [newProj, ...get().projects];
+    set({
+      projects: updatedProjects,
+      activeProjectId: newId,
+      messages: [],
+      settings: { ...defaultSettings },
+      audio: null,
+      currentTime: 0,
+      playing: false,
+    });
+    saveAllProjects(updatedProjects, newId);
+  },
+
+  loadProject: (id) => {
+    const target = get().projects.find((p) => p.id === id);
+    if (!target) return;
+    set({
+      activeProjectId: target.id,
+      messages: target.messages ?? [],
+      settings: { ...defaultSettings, ...(target.settings ?? {}) },
+      audio: null,
+      currentTime: 0,
+      playing: false,
+    });
+    saveAllProjects(get().projects, id);
+  },
+
+  deleteProject: (id) => {
+    const remaining = get().projects.filter((p) => p.id !== id);
+    let nextActive = get().activeProjectId;
+    if (nextActive === id) {
+      nextActive = remaining[0]?.id || "";
+    }
+
+    if (!remaining.length) {
+      const freshId = crypto.randomUUID();
+      const defaultProj: SavedProject = {
+        id: freshId,
+        name: "Story Project #1",
+        updatedAt: Date.now(),
+        messages: [],
+        settings: { ...defaultSettings },
+      };
+      set({
+        projects: [defaultProj],
+        activeProjectId: freshId,
+        messages: [],
+        settings: { ...defaultSettings },
+        audio: null,
+        currentTime: 0,
+        playing: false,
+      });
+      saveAllProjects([defaultProj], freshId);
+    } else {
+      const target = remaining.find((p) => p.id === nextActive) || remaining[0];
+      set({
+        projects: remaining,
+        activeProjectId: target.id,
+        messages: target.messages ?? [],
+        settings: { ...defaultSettings, ...(target.settings ?? {}) },
+        audio: null,
+        currentTime: 0,
+        playing: false,
+      });
+      saveAllProjects(remaining, target.id);
+    }
+  },
+
+  renameProject: (id, newName) => {
+    const updated = get().projects.map((p) =>
+      p.id === id ? { ...p, name: newName.trim() || p.name, updatedAt: Date.now() } : p,
+    );
+    set({ projects: updated });
+    saveAllProjects(updated, get().activeProjectId);
+  },
+
+  duplicateProject: (id) => {
+    const target = get().projects.find((p) => p.id === id);
+    if (!target) return;
+    const dupId = crypto.randomUUID();
+    const dup: SavedProject = {
+      id: dupId,
+      name: `${target.name} (Copy)`,
+      updatedAt: Date.now(),
+      messages: JSON.parse(JSON.stringify(target.messages)),
+      settings: JSON.parse(JSON.stringify(target.settings)),
+    };
+    const updated = [dup, ...get().projects];
+    set({
+      projects: updated,
+      activeProjectId: dupId,
+      messages: dup.messages,
+      settings: dup.settings,
+      audio: null,
+      currentTime: 0,
+      playing: false,
+    });
+    saveAllProjects(updated, dupId);
   },
 }));
 
-function persist() {
+function persistCurrent() {
   if (typeof window === "undefined") return;
-  const { messages, settings } = useStudio.getState();
+  const { messages, settings, activeProjectId, projects } = useStudio.getState();
+  const updatedProjects = projects.map((p) =>
+    p.id === activeProjectId
+      ? { ...p, messages, settings, updatedAt: Date.now() }
+      : p,
+  );
+  useStudio.setState({ projects: updatedProjects });
+  saveAllProjects(updatedProjects, activeProjectId);
+}
+
+function saveAllProjects(projects: SavedProject[], activeId: string) {
+  if (typeof window === "undefined") return;
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ messages, settings }));
+    window.localStorage.setItem(
+      PROJECTS_KEY,
+      JSON.stringify({ projects, activeId }),
+    );
   } catch {
     /* quota — ignore */
   }
 }
 
 export function hydrateStudio() {
-  const data = loadPersisted();
-  if (data && data.messages.length) {
-    useStudio.setState({ messages: data.messages, settings: data.settings });
-  } else if (data) {
-    useStudio.setState({ settings: data.settings });
+  const { projects, activeId } = loadPersistedProjects();
+  if (projects.length) {
+    const active = projects.find((p) => p.id === activeId) || projects[0];
+    useStudio.setState({
+      projects,
+      activeProjectId: active.id,
+      messages: active.messages ?? [],
+      settings: { ...defaultSettings, ...(active.settings ?? {}) },
+    });
+  } else {
+    // Initial setup with first project
+    const firstId = crypto.randomUUID();
+    const initialProj: SavedProject = {
+      id: firstId,
+      name: "Story Project #1",
+      updatedAt: Date.now(),
+      messages: [],
+      settings: { ...defaultSettings },
+    };
+    useStudio.setState({
+      projects: [initialProj],
+      activeProjectId: firstId,
+      messages: [],
+      settings: defaultSettings,
+    });
+    saveAllProjects([initialProj], firstId);
   }
 }
 
